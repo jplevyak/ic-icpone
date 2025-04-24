@@ -5,21 +5,22 @@ authors = ["John Plevyak <jplevyak@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-candid = "0.9"
+candid = "0.10"
 hex = "0.4"
-ic-cdk = "0.10"
-ic-cdk-macros = "0.7"
-ic-stable-structures = "0.5"
+ic-cdk = "0.18"
+ic-cdk-macros = "0.18"
+ic-management-canister-types = "0.3"
+ic-stable-structures = "0.6"
 num = "0.4"
 num-traits = "0.2"
-num-derive = "0.3"
+num-derive = "0.4"
 serde = "1"
 serde_bytes = "0.11"
 sha2 = "0.10"
 
 [build-dependencies]
 anyhow = "1"
-vergen = "6"
+vergen-git2 = { version = "1", features = ["build", "cargo", "rustc", "si"] }
 
 [profile.release]
 debug = false

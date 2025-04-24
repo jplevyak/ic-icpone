@@ -1,9 +1,11 @@
 use candid::{CandidType, Decode, Deserialize, Encode, Func, Principal};
-use ic_cdk::api::management_canister::main::{canister_status, CanisterIdRecord};
+use ic_cdk::call::Call;
+use ic_cdk::management_canister::canister_status;
+use ic_management_canister_types::CanisterIdRecord;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 #[cfg(not(target_arch = "wasm32"))]
 use ic_stable_structures::{file_mem::FileMemory, StableBTreeMap};
-use ic_stable_structures::{BoundedStorable, Storable};
+use ic_stable_structures::{storable::Bound, Storable};
 #[cfg(target_arch = "wasm32")]
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
 use sha2::{Digest, Sha256};
@@ -47,11 +49,11 @@ impl Storable for Profile {
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         Decode!(&bytes, Self).unwrap()
     }
-}
 
-impl BoundedStorable for Profile {
-    const MAX_SIZE: u32 = 256;
-    const IS_FIXED_SIZE: bool = false;
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 256,
+        is_fixed_size: false,
+    };
 }
 
 impl Storable for PrincipalStorable {
@@ -62,11 +64,11 @@ impl Storable for PrincipalStorable {
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         PrincipalStorable(Principal::from_slice(&bytes))
     }
-}
 
-impl BoundedStorable for PrincipalStorable {
-    const MAX_SIZE: u32 = 29;
-    const IS_FIXED_SIZE: bool = false;
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 29,
+        is_fixed_size: false,
+    };
 }
 
 thread_local! {
@@ -79,18 +81,18 @@ thread_local! {
     static PROFILES: RefCell<StableBTreeMap<PrincipalStorable, Profile, Memory>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(0))))
-        );
+    );
     static AUTH: RefCell<StableBTreeMap<PrincipalStorable, u32, Memory>> = RefCell::new(
         StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(3))))
-        );
+    );
     static AUTH_STABLE: RefCell<HashSet<Principal>> = RefCell::new(HashSet::<Principal>::new());
 }
 
 #[ic_cdk_macros::update]
 #[candid::candid_method]
-async fn set_profile(mut profile: Profile) -> Profile {
-    let user = PrincipalStorable(ic_cdk::caller());
+async fn set_profile(profile: Profile) -> Profile {
+    let user = PrincipalStorable(ic_cdk::api::msg_caller());
     let old_profile = PROFILES.with(|p| {
         if let Some(old_profile) = p.borrow().get(&user) {
             if old_profile.updated_time_msecs >= profile.updated_time_msecs {
@@ -102,11 +104,12 @@ async fn set_profile(mut profile: Profile) -> Profile {
     if let Some(old_profile) = old_profile {
         return old_profile;
     }
+    let mut profile = profile;
     if profile.password == None {
         let raw_rand: Vec<u8> =
-            match ic_cdk::call(Principal::management_canister(), "raw_rand", ()).await {
-                Ok((res,)) => res,
-                Err((_, err)) => ic_cdk::trap(&format!("failed to get rand: {}", err)),
+            match Call::unbounded_wait(Principal::management_canister(), "raw_rand").await {
+                Ok(res) => res.to_vec(),
+                Err(err) => ic_cdk::trap(&format!("failed to get rand: {}", err)),
             };
         profile.password = Some(hex::encode(Sha256::digest(raw_rand)));
     }
@@ -118,9 +121,10 @@ async fn set_profile(mut profile: Profile) -> Profile {
 
 #[ic_cdk_macros::update]
 #[candid::candid_method]
-async fn register(mut profile: Profile) -> Profile {
-    let user = PrincipalStorable(ic_cdk::caller());
-    let user_text = ic_cdk::caller().to_text();
+async fn register(profile: Profile) -> Profile {
+    let user = PrincipalStorable(ic_cdk::api::msg_caller());
+    let user_text = ic_cdk::api::msg_caller().to_text();
+    let mut profile = profile;
     PROFILES.with(|p| {
         if !p.borrow().contains_key(&user) {
             if profile.updated_time_msecs == None {
@@ -135,9 +139,9 @@ async fn register(mut profile: Profile) -> Profile {
     });
     if profile.password == None {
         let raw_rand: Vec<u8> =
-            match ic_cdk::call(Principal::management_canister(), "raw_rand", ()).await {
-                Ok((res,)) => res,
-                Err((_, err)) => ic_cdk::trap(&format!("failed to get rand: {}", err)),
+            match Call::unbounded_wait(Principal::management_canister(), "raw_rand").await {
+                Ok(res) => res.to_vec(),
+                Err(err) => ic_cdk::trap(&format!("failed to get rand: {}", err)),
             };
         profile.password = Some(hex::encode(Sha256::digest(raw_rand)));
     }
@@ -150,7 +154,7 @@ async fn register(mut profile: Profile) -> Profile {
 #[ic_cdk_macros::query]
 #[candid::candid_method]
 fn login() -> Profile {
-    let user = PrincipalStorable(ic_cdk::caller());
+    let user = PrincipalStorable(ic_cdk::api::msg_caller());
     PROFILES.with(|p| {
         if !p.borrow().contains_key(&user) {
             ic_cdk::api::trap(&"User not found.");
@@ -187,7 +191,7 @@ fn restore(profiles: Vec<(String, Profile)>) {
 #[ic_cdk_macros::query(guard = "is_stable_authorized")]
 #[candid::candid_method]
 fn stable_size() -> u64 {
-    ic_cdk::api::stable::stable64_size() * WASM_PAGE_SIZE
+    ic_cdk::stable::stable_size() * WASM_PAGE_SIZE
 }
 
 #[ic_cdk_macros::query(guard = "is_stable_authorized")]
@@ -195,7 +199,7 @@ fn stable_size() -> u64 {
 fn stable_read(offset: u64, length: u64) -> Vec<u8> {
     let mut buffer = Vec::new();
     buffer.resize(length as usize, 0);
-    ic_cdk::api::stable::stable64_read(offset, buffer.as_mut_slice());
+    ic_cdk::stable::stable_read(offset, buffer.as_mut_slice());
     buffer
 }
 
@@ -203,13 +207,13 @@ fn stable_read(offset: u64, length: u64) -> Vec<u8> {
 #[candid::candid_method]
 fn stable_write(offset: u64, buffer: Vec<u8>) {
     let size = offset + buffer.len() as u64;
-    let old_size = ic_cdk::api::stable::stable64_size() * WASM_PAGE_SIZE;
+    let old_size = ic_cdk::stable::stable_size() * WASM_PAGE_SIZE;
     if size > old_size {
         let old_pages = old_size / WASM_PAGE_SIZE;
         let pages = (size + (WASM_PAGE_SIZE - 1)) / WASM_PAGE_SIZE;
-        ic_cdk::api::stable::stable64_grow(pages - old_pages).unwrap();
+        ic_cdk::stable::stable_grow(pages - old_pages).unwrap();
     }
-    ic_cdk::api::stable::stable64_write(offset, buffer.as_slice());
+    ic_cdk::stable::stable_write(offset, buffer.as_slice());
 }
 
 #[ic_cdk_macros::query]
@@ -248,20 +252,20 @@ fn deauthorize(principal: Principal) {
 
 #[ic_cdk_macros::init]
 fn canister_init() {
-    authorize_principal(&ic_cdk::caller());
-    stable_authorize(ic_cdk::caller());
+    authorize_principal(&ic_cdk::api::msg_caller());
+    stable_authorize(ic_cdk::api::msg_caller());
 }
 
 #[ic_cdk_macros::update(guard = "is_authorized")]
 #[candid::candid_method]
 async fn authorize_controllers() {
-    let status = canister_status(CanisterIdRecord {
-        canister_id: ic_cdk::api::id(),
+    let status = canister_status(&CanisterIdRecord {
+        canister_id: ic_cdk::api::canister_self(),
     })
     .await
     .unwrap();
     AUTH_STABLE.with(|a| {
-        for p in status.0.settings.controllers.clone() {
+        for p in status.settings.controllers.clone() {
             authorize_principal(&p);
             a.borrow_mut().insert(p);
         }
@@ -271,7 +275,7 @@ async fn authorize_controllers() {
 fn is_authorized() -> Result<(), String> {
     AUTH.with(|a| {
         if a.borrow()
-            .contains_key(&PrincipalStorable(ic_cdk::caller()))
+            .contains_key(&PrincipalStorable(ic_cdk::api::msg_caller()))
         {
             Ok(())
         } else {
@@ -282,7 +286,7 @@ fn is_authorized() -> Result<(), String> {
 
 fn is_stable_authorized() -> Result<(), String> {
     AUTH_STABLE.with(|a| {
-        if a.borrow().contains(&ic_cdk::caller()) {
+        if a.borrow().contains(&ic_cdk::api::msg_caller()) {
             Ok(())
         } else {
             Err("You are not stable authorized".to_string())
@@ -350,7 +354,6 @@ fn info() -> String {
             env!("VERGEN_GIT_COMMIT_TIMESTAMP")
         )
         + &format!("RUSTC_SEMVER={}\n", env!("VERGEN_RUSTC_SEMVER"))
-        + &format!("CARGO_PROFILE={}\n", env!("VERGEN_CARGO_PROFILE"))
         + &format!("BUILD_TIMESTAMP={}\n", env!("VERGEN_BUILD_TIMESTAMP"))
         + &format!("CANDID:\n{}\n", __export_service())
 }
