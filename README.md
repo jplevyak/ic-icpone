@@ -1,6 +1,6 @@
-# Factland backend
+# ICPOne backend
 
-This canister smart contract contains the Factland user data backend.
+This canister smart contract contains the ICPOne user data backend.
 
 ## Usage
 
@@ -18,7 +18,7 @@ type Profile = record {
 The contract presents the API:
 
 ```
-service factland: {
+service icpone: {
   register:  (Profile) -> (Profile);
   login:  () -> (Profile) query;
   set_profile: (Profile) -> (Profile);
@@ -44,7 +44,7 @@ service factland: {
 
 The canister uses stable memory to store all data, so it is not necessary to backup and restore the data under normal operation.  Nevertheless, the data can be backed up and restored e.g. to support arbitrary schema changes. The principal doing the backup and restore must first be authorized by the principal which installed the canister smart contract.  Sample code to backup and restore the data is the `./backup` directory.
 
-The installation principal is assumed to be available as the default in `dfx`.  The backup and restore identity is assumed to be `factland`.  The canister id of the canister smart contract is hard coded in the scripts.  These can be changed in the code.
+The installation principal is assumed to be available as the default in `dfx`.  The backup and restore identity is assumed to be `icpone`.  The canister id of the canister smart contract is hard coded in the scripts.  These can be changed in the code.
 
 A raw backup/restore interface is also available for debugging and last resort disaster recovery. The user is responsible for ensuring that there are no updates to the canister state during raw access to stable memory by (for example) `deauthorize`-ing everyone or installing a canister with only the `stable_xxx` methods.
 

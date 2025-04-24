@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "factland": {
-      "candid": "factland.did",
-      "package": "factland",
+    "icpone": {
+      "candid": "icpone.did",
+      "package": "icpone",
       "type": "rust"
     }
   },

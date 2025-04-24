@@ -6,7 +6,7 @@ The Internet Computer uses [Stable Memory](https://internetcomputer.org/docs/cur
 
 ## A dApp with Stable Structures
 
-This example is taken from the decentralized fact checking dApp [Factland](https://factland.org) and the code is available on [github](https://github.com/Factland/ic-factland).  Consider this code fragment which uses stable-structures to store user profiles:
+This example is taken from the decentralized fact checking dApp [ICPOne](https://icp.one) and the code is available on [github](https://github.com/jplevyak/ic-icpone).  Consider this code fragment which uses stable-structures to store user profiles:
 
 ```rust
 #[derive(Clone, Debug, Default, CandidType, Deserialize)]
@@ -99,7 +99,7 @@ static AUTH: RefCell<StableBTreeMap<Memory, Blob, u32>> = RefCell::new(
   );
 ```
 
-Client code is available in the Factland repo for [backup](https://github.com/Factland/ic-factland/tree/main/backup/backup.js) and [restore](https://github.com/Factland/ic-factland/tree/main/backup/restore.js).  This code written in javascript and runs on nodejs.  It uses the deploying Principal to authorize an operator Principal which does the backup, saving the data in JSON format, and restore.  Once the operator Principal is authorized and the client is initialized the core code just prints out the data in JSON format:
+Client code is available in the ICPOne repo for [backup](https://github.com/jplevyak/ic-icpone/tree/main/backup/backup.js) and [restore](https://github.com/jplevyak/ic-icpone/tree/main/backup/restore.js).  This code written in javascript and runs on nodejs.  It uses the deploying Principal to authorize an operator Principal which does the backup, saving the data in JSON format, and restore.  Once the operator Principal is authorized and the client is initialized the core code just prints out the data in JSON format:
 
 ```javascript
 let profiles = await actor.backup(0, 1000);
@@ -203,4 +203,4 @@ fn main() {
 }
 ```
 
-The low level backup and restore javascript is also available in the [Factland](https://factland.org) [github repo](https://github.com/Factland/ic-factland). Backup and restore operates on one megabyte blocks.  In order to make this relatively fast the backup uses queries and the restore can compare a modified image to an original image, restoring only the blocks which have been changed.
+The low level backup and restore javascript is also available in the [ICPOne](https://icp.one) [github repo](https://github.com/jplevyak/ic-icpone). Backup and restore operates on one megabyte blocks.  In order to make this relatively fast the backup uses queries and the restore can compare a modified image to an original image, restoring only the blocks which have been changed.

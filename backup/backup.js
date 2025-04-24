@@ -6,7 +6,7 @@ import { lebDecode, PipeArrayBuffer } from "@dfinity/candid";
 import { Principal } from '@dfinity/principal';
 import { Secp256k1PublicKey, Secp256k1KeyIdentity } from '@dfinity/identity';
 import { Actor, Cbor, Certificate, HttpAgent, lookup_path, reconstruct, hashTreeToString } from '@dfinity/agent';
-import { idlFactory } from '../src/declarations/factland/factland.did.js';
+import { idlFactory } from '../src/declarations/icpone/icpone.did.js';
 import exec from 'await-exec';
 import assert from 'assert';
 
@@ -65,7 +65,7 @@ function blockToHex(block) {
 global.fetch = fetch;
 
 // Obtain identity.
-const privateKeyFile = fs.readFileSync('/home/jplevyak/.config/dfx/identity/factland/identity.pem');
+const privateKeyFile = fs.readFileSync('/home/jplevyak/.config/dfx/identity/icpone/identity.pem');
 const privateKeyObject = crypto.createPrivateKey({
 	key: privateKeyFile,
 	format: 'pem'
@@ -83,11 +83,11 @@ const raw_principal = identity.getPrincipal().toUint8Array();
 
 // Authorize this identity.
 console.log('authorizing principal', principal);
-//let authorize_cmd = 'dfx canister --network ic call factland authorize \'(principal "' + principal + '")\'';
-let authorize_cmd = 'dfx canister call factland authorize \'(principal "' + principal + '")\'';
+//let authorize_cmd = 'dfx canister --network ic call icpone authorize \'(principal "' + principal + '")\'';
+let authorize_cmd = 'dfx canister call icpone authorize \'(principal "' + principal + '")\'';
 console.log('exec:', authorize_cmd, await exec(authorize_cmd));
 
-//const canisterId = "5u3nb-maaaa-aaaae-qaega-cai";
+//const canisterId = "kdc2c-uaaaa-aaaae-qaafq-caia";
 //const url = 'https://ic0.app';
 const canisterId = "rrkah-fqaaa-aaaaa-aaaaq-cai";
 const url = 'http://localhost:8080';

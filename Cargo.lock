@@ -294,26 +294,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
-name = "factland"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "candid",
- "hex",
- "ic-cdk",
- "ic-cdk-macros",
- "ic-management-canister-types",
- "ic-stable-structures",
- "num",
- "num-derive",
- "num-traits",
- "serde",
- "serde_bytes",
- "sha2",
- "vergen-git2",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -454,6 +434,26 @@ dependencies = [
  "serde",
  "sha2",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "icpone"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candid",
+ "hex",
+ "ic-cdk",
+ "ic-cdk-macros",
+ "ic-management-canister-types",
+ "ic-stable-structures",
+ "num",
+ "num-derive",
+ "num-traits",
+ "serde",
+ "serde_bytes",
+ "sha2",
+ "vergen-git2",
 ]
 
 [[package]]

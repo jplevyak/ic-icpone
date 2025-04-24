@@ -5,13 +5,26 @@ type Profile = record {
   email: opt text;
 };
 
-service factland: {
+type HeaderField = record { text; text; };
+
+type HttpRequest = record {
+  method: text;
+  url: text;
+  headers: vec HeaderField;
+  body: blob;
+};
+
+type HttpResponse = record {
+  status_code: nat16;
+  headers: vec HeaderField;
+  body: blob;
+};
+
+service icpone: {
   register:  (Profile) -> (Profile);
   login:  () -> (Profile) query;
   set_profile: (Profile) -> (Profile);
-  //
   // Backup/restore map from principal (in text) to Profile(s).
-  //
   backup: (offset: nat32, count: nat32) -> (vec record { text; Profile }) query;
   restore: (vec record { text; Profile }) -> ();
   authorize: (principal) -> ();
@@ -25,4 +38,6 @@ service factland: {
   stable_write : (nat64, vec nat8) -> ();
   // Authorize controllers for all backup/restore operations.
   authorize_controllers: () -> ();  // For all backup/restore.
+  // Http interface
+  http_request: (request: HttpRequest) -> (HttpResponse) query;
 }

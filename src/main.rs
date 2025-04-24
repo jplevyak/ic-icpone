@@ -1,5 +1,4 @@
-use candid::{CandidType, Decode, Deserialize, Encode, Func, Principal};
-use ic_cdk::call::Call;
+use candid::{CandidType, Decode, Deserialize, Encode, Principal};
 use ic_cdk::management_canister::canister_status;
 use ic_management_canister_types::CanisterIdRecord;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
@@ -90,7 +89,7 @@ thread_local! {
 }
 
 #[ic_cdk_macros::update]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 async fn set_profile(profile: Profile) -> Profile {
     let user = PrincipalStorable(ic_cdk::api::msg_caller());
     let old_profile = PROFILES.with(|p| {
@@ -106,11 +105,9 @@ async fn set_profile(profile: Profile) -> Profile {
     }
     let mut profile = profile;
     if profile.password == None {
-        let raw_rand: Vec<u8> =
-            match Call::unbounded_wait(Principal::management_canister(), "raw_rand").await {
-                Ok(res) => res.to_vec(),
-                Err(err) => ic_cdk::trap(&format!("failed to get rand: {}", err)),
-            };
+        let raw_rand: Vec<u8> = ic_cdk::management_canister::raw_rand()
+            .await
+            .unwrap_or_else(|err| ic_cdk::trap(&format!("failed to get rand: {}", err)));
         profile.password = Some(hex::encode(Sha256::digest(raw_rand)));
     }
     PROFILES.with(|p| {
@@ -120,7 +117,7 @@ async fn set_profile(profile: Profile) -> Profile {
 }
 
 #[ic_cdk_macros::update]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 async fn register(profile: Profile) -> Profile {
     let user = PrincipalStorable(ic_cdk::api::msg_caller());
     let user_text = ic_cdk::api::msg_caller().to_text();
@@ -138,11 +135,9 @@ async fn register(profile: Profile) -> Profile {
         }
     });
     if profile.password == None {
-        let raw_rand: Vec<u8> =
-            match Call::unbounded_wait(Principal::management_canister(), "raw_rand").await {
-                Ok(res) => res.to_vec(),
-                Err(err) => ic_cdk::trap(&format!("failed to get rand: {}", err)),
-            };
+        let raw_rand: Vec<u8> = ic_cdk::management_canister::raw_rand()
+            .await
+            .unwrap_or_else(|err| ic_cdk::trap(&format!("failed to get rand: {}", err)));
         profile.password = Some(hex::encode(Sha256::digest(raw_rand)));
     }
     PROFILES.with(|p| {
@@ -152,7 +147,7 @@ async fn register(profile: Profile) -> Profile {
 }
 
 #[ic_cdk_macros::query]
-#[candid::candid_method]
+#[candid::candid_method(query)]
 fn login() -> Profile {
     let user = PrincipalStorable(ic_cdk::api::msg_caller());
     PROFILES.with(|p| {
@@ -164,7 +159,7 @@ fn login() -> Profile {
 }
 
 #[ic_cdk_macros::query(guard = "is_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(query)]
 fn backup(offset: u32, count: u32) -> Vec<(String, Profile)> {
     PROFILES.with(|p| {
         p.borrow()
@@ -177,7 +172,7 @@ fn backup(offset: u32, count: u32) -> Vec<(String, Profile)> {
 }
 
 #[ic_cdk_macros::update(guard = "is_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 fn restore(profiles: Vec<(String, Profile)>) {
     PROFILES.with(|m| {
         let mut m = m.borrow_mut();
@@ -189,13 +184,13 @@ fn restore(profiles: Vec<(String, Profile)>) {
 }
 
 #[ic_cdk_macros::query(guard = "is_stable_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(query)]
 fn stable_size() -> u64 {
     ic_cdk::stable::stable_size() * WASM_PAGE_SIZE
 }
 
 #[ic_cdk_macros::query(guard = "is_stable_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(query)]
 fn stable_read(offset: u64, length: u64) -> Vec<u8> {
     let mut buffer = Vec::new();
     buffer.resize(length as usize, 0);
@@ -204,7 +199,7 @@ fn stable_read(offset: u64, length: u64) -> Vec<u8> {
 }
 
 #[ic_cdk_macros::update(guard = "is_stable_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 fn stable_write(offset: u64, buffer: Vec<u8>) {
     let size = offset + buffer.len() as u64;
     let old_size = ic_cdk::stable::stable_size() * WASM_PAGE_SIZE;
@@ -217,7 +212,7 @@ fn stable_write(offset: u64, buffer: Vec<u8>) {
 }
 
 #[ic_cdk_macros::query]
-#[candid::candid_method]
+#[candid::candid_method(query)]
 fn get_authorized() -> Vec<Principal> {
     let mut authorized = Vec::new();
     AUTH.with(|a| {
@@ -229,19 +224,19 @@ fn get_authorized() -> Vec<Principal> {
 }
 
 #[ic_cdk_macros::update(guard = "is_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 fn authorize(principal: Principal) {
     authorize_principal(&principal);
 }
 
 #[ic_cdk_macros::update(guard = "is_stable_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 fn stable_authorize(principal: Principal) {
     AUTH_STABLE.with(|a| a.borrow_mut().insert(principal));
 }
 
 #[ic_cdk_macros::update(guard = "is_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 fn deauthorize(principal: Principal) {
     AUTH.with(|a| {
         a.borrow_mut()
@@ -257,7 +252,7 @@ fn canister_init() {
 }
 
 #[ic_cdk_macros::update(guard = "is_authorized")]
-#[candid::candid_method]
+#[candid::candid_method(update)]
 async fn authorize_controllers() {
     let status = canister_status(&CanisterIdRecord {
         canister_id: ic_cdk::api::canister_self(),
@@ -314,19 +309,10 @@ pub struct HttpRequest {
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct Token {}
-
-#[derive(Clone, Debug, CandidType, Deserialize)]
-pub enum StreamingStrategy {
-    Callback { callback: Func, token: Token },
-}
-
-#[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct HttpResponse {
     pub status_code: u16,
     pub headers: Vec<HeaderField>,
     pub body: Blob,
-    pub streaming_strategy: Option<StreamingStrategy>,
 }
 
 #[ic_cdk_macros::query]
@@ -339,7 +325,6 @@ async fn http_request(_: HttpRequest) -> HttpResponse {
             ("Content-Length".to_string(), body.len().to_string()),
         ],
         body: body.into(),
-        streaming_strategy: None,
     };
 }
 
@@ -347,7 +332,7 @@ candid::export_service!();
 
 fn info() -> String {
     "".to_string()
-        + &format!("GIT_REPO=https://github.com/Factland/ic-factland.git\n")
+        + &format!("GIT_REPO=https://github.com/jplevyak/ic-icpone.git\n")
         + &format!("GIT_BRANCH={}\n", env!("VERGEN_GIT_BRANCH"))
         + &format!(
             "GIT_COMMIT_TIMESTAMP={}\n",
