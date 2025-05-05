@@ -334,6 +334,7 @@ fn info() -> String {
     "".to_string()
         + &format!("GIT_REPO=https://github.com/jplevyak/ic-icpone.git\n")
         + &format!("GIT_BRANCH={}\n", env!("VERGEN_GIT_BRANCH"))
+        + &format!("GIT_SHA={}\n", env!("VERGEN_GIT_SHA"))
         + &format!(
             "GIT_COMMIT_TIMESTAMP={}\n",
             env!("VERGEN_GIT_COMMIT_TIMESTAMP")
